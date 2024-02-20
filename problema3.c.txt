@@ -1,0 +1,248 @@
+/* Criação de um jogo inspirado em Breakout para ser executado em uma DE1-SoC
+ - A raquete/barra será movimentada pelo jogador por meio do acelerômetro
+ - Todos os itens visuais serão exibidos por meio da interface VGA
+ - Botões serão utilizados para: reiniciar, pausar e continuar o jogo
+ - O jogo é encerrado de vez pela utilização de ^C
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+#include <unistd.h>
+#include <stdbool.h>
+#include <intelfpgaup/KEY.h>
+#include <intelfpgaup/video.h>
+#include <intelfpgaup/accel.h>
+
+volatile sig_atomic_t sair;
+void catchSIGINT(int signum){
+    sair = 1;
+}
+
+//SW_read() -> valor máximo é 1023
+
+// /**
+// * Draws a filled box on the VGA video device
+// * Parameter x1: the column for one corner
+// * Parameter y1: the row for one corner
+// * Parameter x2: the column for the opposite corner
+// * Parameter y2: the row for the opposite corner
+// * Parameter color: the pixel color
+// * Return: void
+// */
+// void video_box (int /*x1*/, int /*y1*/, int /*x2*/, int /*y2*/, short /*color*/);
+
+// /**
+// * Function video_text: puts text on the video device
+// * Parameter x: the pixel column
+// * Parameter y: the pixel row
+// * Parameter msg: pointer to the text string
+// * Return: void
+// */
+// void video_text (int /*x*/, int /*y*/, char * /*string*/);
+
+// /**
+// * Function video_pixel: sets pixel at (x, y) to color
+// * Parameter x: the pixel column
+// * Parameter y: the pixel row
+// * Parameter color: the pixel color
+// * Return: void
+// */
+// void video_pixel (int /*x*/, int /*y*/, short /*color*/);
+
+// /**
+// * Function video_line: draws a line
+// * Parameter x1: the starting column
+// * Parameter y1: the starting row
+// * Parameter x2: the ending column
+// * Parameter y2: the ending row
+// * Parameter color: the line color
+// * Return: void
+// */
+// void video_line (int /*x1*/, int /*y1*/, int /*x2*/, int /*y2*/, short /*color*/);
+
+// /**
+// * Function: accel_read: reads data from the 3D-accelerometer accel device
+// * Parameter ready: pointer for returning ready signal (1 if new data, else 0)
+// * Parameter tap: pointer for returning the tap signal (1 if tap event, else 0)
+// * Parameter dtap: pointer for the double-tap signal (1 if double-tap event,
+// * else 0)
+// * Parameter x: pointer for returning acceleration data in the x direction
+// * Parameter y: pointer for returning acceleration data in the y direction
+// * Parameter z: pointer for returning acceleration data in the z direction
+// * Parameter mg_per_lsb: pointer for returning the acceleration-data scale factor
+// * Return: 1 on success, else 0
+// */
+// int accel_read (int * /*ready*/, int * /*tap*/, int * /*dtap*/, int * /*x*/,
+// int * /*y*/, int * /*z*/, int * /*mg_per_lsb*/);
+
+// /**
+// * Function: accel_init: initializes the 3D-acceleration device
+// * Return: void
+// */
+// void accel_init (void);
+// /**
+// * Function accel_calibrate: xalibrates the 3D-acceleration device
+// * Return: void
+// */
+// void accel_calibrate (void);
+
+#define video_BLACK 0x00
+#define LARGURA_TELA 319
+#define ALTURA_TELA 239
+
+typedef struct{
+    int tamanho;
+    int pos_x, pos_y;
+    short cor;
+} Projetil;
+
+typedef struct{
+    int tamanho_x, tamanho_y;
+    int pos_x;
+    short cor;
+} Raquete;
+
+typedef struct{
+    int pos_xi, pos_yi;
+    int pos_xf, pos_yf;
+    short cor;
+    bool quebrado;
+} Bloco;
+
+
+
+Bloco set_blocos(int pos_xi, int pos_xf, int pos_yi, int pos_yf);
+void interpreta_botoes(int *botoes, bool *pause);
+
+int main(int argc, char *argv[]){
+    signal(SIGINT, catchSIGINT);
+    if (KEY_open() == 0 || video_open() == 0 || accel_open() == 0){
+        printf("Erro na inicialização de periféricos.\n");
+        return 1;
+    }
+
+   
+    video_erase();
+    accel_init ();
+    accel_format(1, 2);
+    accel_calibrate();
+
+    int botoes;
+    bool pause = false;
+    int acel_rdy, acel_tap, acel_dtap, acel_x, acel_y, acel_z, acel_mg;
+    int raquete_xi = (319/2) -25;
+    int raquete_xf = (319/2) + 25;
+    int raquete_yi = 210 - 1;
+    int raquete_yf = 210 + 1;
+	int bolaX = (319/2);
+	int bolaY = (239/2);
+	int move_bolaX = 2;
+	int move_bolaY = 2;
+	int blocoXI = 0;
+	int blocoYI = 0;
+	int blocoXF = 20;
+	int blocoYF = 10;
+	Bloco array_blocos[16];
+	
+    while (!sair){
+        interpreta_botoes(&botoes, &pause);
+        if (pause){
+            printf("Programa pausado.\n");
+            while (pause && !sair) interpreta_botoes(&botoes, &pause);
+        }
+		video_clear();
+        // Leitura do acelerômetro para movimentação da raquete (barra)
+        accel_read(&acel_rdy, &acel_tap, &acel_dtap, &acel_x, &acel_y, &acel_z, &acel_mg);
+
+   		
+       	
+        video_box(0, 0, LARGURA_TELA, ALTURA_TELA, video_BLACK); // Desenha o fundo da tela
+     
+    	video_box(bolaX,bolaY,bolaX+4,bolaY + 4,video_WHITE);
+        //video_box(ALTURA_TELA - 2, LARGURA_TELA - 2, 2, 2, video_BLACK); // Desenha a área útil e visível do jogo, criando bordas com o fundo da tela
+        if (acel_x > -10 && acel_x <10 ){
+        }
+        else if (acel_x < 0 && raquete_xi > 13) {
+			
+            raquete_xi -= 5;
+            raquete_xf -= 5;
+             // Desenha o fundo da tela
+        }
+        else if (acel_x > 0  && raquete_xf < (319 - 13)){
+        	
+            raquete_xi += 5;
+            raquete_xf += 5;
+            
+        } 
+        else {
+        	
+            
+        }
+        
+        
+        if ((bolaX) >= 319 || (bolaX) <= 0){
+        	move_bolaX *= -1;
+        }
+        
+        if ((bolaY) >= 239 || (bolaY) <= 0){
+        	move_bolaY *= -1;
+        }
+        
+        if (raquete_yi <= (bolaY + 2) && (bolaX >= raquete_xi && bolaX <= raquete_xf) ){
+        	move_bolaY *= -1;
+        }
+        
+        if(raquete_yf <= bolaY){
+        
+        }
+        
+        bolaX += move_bolaX;
+        bolaY += move_bolaY;
+    	int i;
+    	Bloco b;
+   		for(i = 0; i <5; i++){
+   			b = set_blocos(blocoXI, blocoXF, blocoYI, blocoYF);
+   			array_blocos[i] = b;
+   			blocoXI = blocoXF;
+   			blocoXF += 20;
+   		}
+   		for(i = 0; i <5; i++){
+   			if( array_blocos[i].pos_xf < 299 ){
+   				video_box(array_blocos[i].pos_xi, array_blocos[i].pos_yi, array_blocos[i].pos_xf, array_blocos[i].pos_yf, video_WHITE);
+   				
+   			}
+   		} 	
+    
+       	video_box(raquete_xi, raquete_yi, raquete_xf, raquete_yf, video_WHITE);
+        // Desenha a barra na posição atual
+        video_show();
+      
+		printf("%d\n", acel_x);
+    }
+	
+    printf("Encerrando...\n");
+    KEY_close();
+    video_close();
+    accel_close();
+    return 0;
+}
+
+void interpreta_botoes(int *botoes, bool *pause){
+    KEY_read(botoes);
+    if (*botoes > 7) {
+        if (*pause == false) *pause = true;
+        else *pause = false;
+    }
+}
+
+Bloco set_blocos(int pos_xi, int pos_xf, int pos_yi, int pos_yf){
+      		Bloco B;
+      		B.pos_xi = pos_xi;
+      		B.pos_xf = pos_xf;
+      		B.pos_yi = pos_yi;
+      		B.pos_yf = pos_yf;
+      		return B;
+ }
+
